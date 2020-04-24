@@ -1,14 +1,12 @@
 import argparse
 import ast
 import logging
-import subprocess
 import sys
 from itertools import chain
 from pathlib import Path
-from tempfile import mkstemp
 from textwrap import dedent
 
-logging.basicConfig(stream=sys.stderr, format="%(asctime)s %(levelname)s - %(message)s", level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, format="%(levelname)s - %(message)s", level=logging.DEBUG)
 
 
 def is_import(node):
@@ -20,13 +18,29 @@ def refactor(mod: Path) -> str:
     import statements to the header.
     """
     original_source = mod.read_text()
+    source_lines = original_source.split("\n")
     root = ast.parse(original_source)
     list_of_nodes = list(ast.walk(root))
 
     def get_source_segment(node):
         """given a node, return it's  line number range (0-indexed)"""
-        next_node = list_of_nodes[list_of_nodes.index(node) + 1]
-        return node.lineno - 1, next_node.lineno - 2
+        if node:
+            try:
+                next_node = list_of_nodes[list_of_nodes.index(node) + 1]
+            except IndexError:
+                next_node = list_of_nodes[-1]
+
+            # calculate end, ignoring comment lines related the the
+            # next node
+            end = next_node.lineno - 2
+            while True:
+                # check if line is a comment
+                if not source_lines[end].strip().startswith("#"):
+                    break
+                end -= 1
+            return node.lineno - 1, end
+        # block not found
+        return (0, 0)
 
     def find_head_block():
         """find the line number ranges of all imports statements
@@ -54,12 +68,14 @@ def refactor(mod: Path) -> str:
         if is_import(node) and node.col_offset:
             to_move.append(get_source_segment(node))
 
+    if not to_move:
+        logging.info("nothing to move")
+
     logging.debug(f"blocks to move: {to_move}")
 
     # get new imports to put at head_end
 
     imports = []
-    source_lines = original_source.split("\n")
     for segment in to_move:
         block = dedent("\n".join(source_lines[segment[0] : segment[1] + 1]))
         imports.append(block)
