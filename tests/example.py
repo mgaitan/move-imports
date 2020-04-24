@@ -1,5 +1,6 @@
-import datetime as dt
+import requests
 from math import sin
+import datetime as dt
 
 BASE_SCENARIO = """
     ##########
