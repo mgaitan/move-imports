@@ -67,6 +67,30 @@ If you want apply `--isort` install it
 $ pip --user install isort
 ```
 
+## Incremental refactoring
+
+Sometimes inline imports statements are there for a reason. Circular imports, optional dependendencies, etc.
+
+To manage this, it's useful to go step by step, checking a changed module
+is ok before to move to the next one.
+
+With a combination of `--start-from-last` and `--limit-to LIMIT_TO`
+arguments you could incrementally refactor a whole package.
+
+For instance, calling repeteadly the following command
+
+```
+$ move-imports --isort --rewrite --start-from-last --limit-to=1 tests/billing/**/*.py
+```
+
+will recursively traverse `tests/billing/` refactoring one module at a time. Thus, the worflow would be:
+
+- run,
+- test,
+- optionally revert or modify manually
+- repeat
+
+
 ## Running tests
 
 Clone the repo and install pytest
@@ -80,7 +104,8 @@ $ pytest
 
 ```
 $ move-imports --help
-usage: move-imports [-h] [--limit-to LIMIT_TO] [--rewrite] [--isort]
+usage: move-imports [-h] [--start-from-last] [--limit-to LIMIT_TO] [--debug]
+                    [--rewrite] [--isort]
                     [paths [paths ...]]
 
 positional arguments:
@@ -88,7 +113,10 @@ positional arguments:
 
 optional arguments:
   -h, --help           show this help message and exit
-  --limit-to LIMIT_TO  Stop processing after N files
+  --start-from-last    Incremental refactor
+  --limit-to LIMIT_TO  Stop processing after N files. Use with --start-from-
+                       last
+  --debug              Make verbose output
   --rewrite            write the result to source's path
   --isort              apply isort
 ```

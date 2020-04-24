@@ -2,15 +2,16 @@ import argparse
 import ast
 import logging
 import sys
-from itertools import chain
+from itertools import chain, dropwhile
 from pathlib import Path
 from textwrap import dedent
 
-logging.basicConfig(stream=sys.stderr, format="%(levelname)s - %(message)s", level=logging.DEBUG)
+logging.basicConfig(stream=sys.stderr, format="%(levelname)s - %(message)s")
 
 
 def is_import(node):
     return isinstance(node, (ast.Import, ast.ImportFrom))
+
 
 def refactor(mod: Path) -> str:
     """
@@ -99,19 +100,36 @@ def main(argv=None, print_source=True):
         "src_path", nargs="*", metavar="paths", type=str, help="Path/s to refactor. Glob supported enclosed in quotes",
     )
     parser.add_argument(
-        "--limit-to", type=int, default=0, help="Stop processing after N files",
+        "--start-from-last", action="store_true", help="Incremental refactor"
     )
+    parser.add_argument(
+        "--limit-to", type=int, default=0, help="Stop processing after N files. Use with --start-from-last",
+    )
+    parser.add_argument("--debug", action="store_true", help="Make verbose output")
     parser.add_argument("--rewrite", action="store_true", help="write the result to source's path")
     parser.add_argument("--isort", action="store_true", help="apply isort")
 
     args = parser.parse_args(argv)
+    logging.root.setLevel(logging.DEBUG if args.debug else logging.INFO)
+
     all_files = chain.from_iterable(
         Path('.').glob(p) if not p.startswith("/") else [Path(p)] for p in args.src_path
     )
+    last_processed = None
+    if args.start_from_last:
+        p = Path(".move-import")
+        if p.exists():
+            last_processed = p.read_text().strip()
+            logging.debug(f"found last_processed: {last_processed}")
+            # discard until the last processed
+            all_files = dropwhile(lambda x: str(x) != last_processed, all_files)
+            next(all_files) # discard last_processed itself
+
     new_sources = []
     for i, mod in enumerate(all_files):
         if args.limit_to and i == args.limit_to:
             break
+        last_processed = mod
         logging.info(f"processing {mod}")
         new_source, new_head_end = refactor(mod)
         if args.isort:
@@ -135,6 +153,9 @@ def main(argv=None, print_source=True):
             print(new_source)
         else:
             new_sources.append(new_source)
+        if last_processed and args.start_from_last:
+            p = Path(".move-import")
+            p.write_text(str(mod))
 
     return new_sources if not print_source else ""
 
