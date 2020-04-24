@@ -95,4 +95,4 @@ optional arguments:
 
 ## Acknowledgement
 
-Thanks to [Shiphero](https://shiphero.com) to give me the time to do this.
+Thanks to [Shiphero](https://shiphero.com) for give me the time to do this.
