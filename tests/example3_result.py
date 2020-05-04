@@ -1,4 +1,6 @@
 from math import tan
+
+
 def foo():
     # avoid circular import
     from math import sin
