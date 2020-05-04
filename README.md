@@ -55,13 +55,17 @@ def bar():
 
 ## Install
 
-Directly from the git repo
+```
+$ pip --user install move-imports
+```
+
+or the development version, directly from the git repo
 
 ```
 $ pip --user install git+https://github.com/mgaitan/move-imports
 ```
 
-If you want apply `--isort` install it
+If you want apply `--isort` for postprocessing, install it
 
 ```
 $ pip --user install isort
