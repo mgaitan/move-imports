@@ -67,6 +67,25 @@ If you want apply `--isort` install it
 $ pip --user install isort
 ```
 
+## Skip cases
+
+To keep an inline import you could add a comment in the same line or above
+the stament with "avoid circular import" or "noqa".
+
+```python
+
+  def foo():
+    # avoid circular import
+    import baz
+```
+
+```python
+
+  def foo():
+    import baz  # noqa
+```
+
+
 ## Incremental refactoring
 
 Sometimes inline imports statements are there for a reason. Circular imports, optional dependendencies, etc.
@@ -87,7 +106,7 @@ will recursively traverse `tests/billing/` refactoring one module at a time. Thu
 
 - run,
 - test,
-- optionally revert or modify manually
+- optionally revert and skip problematic imports or modify manually
 - repeat
 
 
