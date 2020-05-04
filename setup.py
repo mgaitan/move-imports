@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="move-imports",
-    version="0.1",
+    version="0.2",
     description="""Refactor modules to move import statements to the header""",
     long_description=open("README.md").read(),
     long_description_content_type='text/markdown',
