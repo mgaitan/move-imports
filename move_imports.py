@@ -1,6 +1,7 @@
 import argparse
 import ast
 import logging
+import re
 import sys
 from itertools import chain, dropwhile
 from pathlib import Path
@@ -8,9 +9,19 @@ from textwrap import dedent
 
 logging.basicConfig(stream=sys.stderr, format="%(levelname)s - %(message)s")
 
+SKIP_MARK_PATTERN = re.compile(r"#\s+?(noqa|avoid circular import)")
 
-def is_import(node):
-    return isinstance(node, (ast.Import, ast.ImportFrom))
+
+def is_import(node, top=None):
+    """
+    check if node is an import statement.
+    if top is given (as boolean), filter by top level not stop level
+    """
+
+    result = isinstance(node, (ast.Import, ast.ImportFrom))
+    if top is not None:
+        result = result and bool(node.col_offset) is not top
+    return result
 
 
 def refactor(mod: Path) -> str:
@@ -23,6 +34,21 @@ def refactor(mod: Path) -> str:
     root = ast.parse(original_source)
     list_of_nodes = list(ast.walk(root))
 
+    def has_skip_mark(node):
+        start = get_comment_above(node)
+        end = node.lineno
+        fragment = "\n".join(source_lines[start:end])
+        return bool(re.findall(SKIP_MARK_PATTERN, fragment))
+
+    def get_comment_above(node):
+        start = node.lineno - 2
+        while start:
+            # check if line is a comment
+            if not source_lines[start].strip().startswith("#"):
+                break
+            start -= 1
+        return start
+
     def get_source_segment(node):
         """given a node, return it's  line number range (0-indexed)"""
         if node:
@@ -31,30 +57,24 @@ def refactor(mod: Path) -> str:
             except IndexError:
                 next_node = list_of_nodes[-1]
 
-            # calculate end, ignoring comment lines related the the
-            # next node
-            end = next_node.lineno - 2
-            while True:
-                # check if line is a comment
-                if not source_lines[end].strip().startswith("#"):
-                    break
-                end -= 1
+            end = get_comment_above(next_node)
             return node.lineno - 1, end
         # block not found
         return (0, 0)
 
     def find_head_block():
-        """find the line number ranges of all imports statements
-        at the top of the module"""
-
+        """
+        find the line number ranges of all imports statements
+        at the top of the module
+        """
         first_import = None
         last_import = None
         for node in list_of_nodes:
-            if last_import and not is_import(node):
+            if last_import and not is_import(node, True):
                 break
-            elif not first_import and is_import(node):
+            elif not first_import and is_import(node, True):
                 first_import = node
-            elif is_import(node):
+            elif is_import(node, True):
                 last_import = node
 
         start, _ = get_source_segment(first_import)
@@ -66,16 +86,15 @@ def refactor(mod: Path) -> str:
 
     to_move = []
     for node in list_of_nodes:
-        if is_import(node) and node.col_offset:
+        if is_import(node, top=False) and not has_skip_mark(node):
             to_move.append(get_source_segment(node))
 
-    if not to_move:
+    if to_move:
+        logging.debug(f"blocks to move: {to_move}")
+    else:
         logging.info("nothing to move")
 
-    logging.debug(f"blocks to move: {to_move}")
-
     # get new imports to put at head_end
-
     imports = []
     for segment in to_move:
         block = dedent("\n".join(source_lines[segment[0] : segment[1] + 1]))
