@@ -13,5 +13,5 @@ root = Path(__file__).parent
     ([f"{root}/example3.py", "--isort"], f"{root}/example3_result.py"),
 ])
 def test_main(args, result_path):
-    result = main(args, print_source=False)
+    result = main(args + ["--show-only"], print_source=False)
     assert result == [Path(result_path).read_text()]

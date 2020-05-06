@@ -125,7 +125,7 @@ def main(argv=None, print_source=True):
         "--limit-to", type=int, default=0, help="Stop processing after N files. Use with --start-from-last",
     )
     parser.add_argument("--debug", action="store_true", help="Make verbose output")
-    parser.add_argument("--rewrite", action="store_true", help="write the result to source's path")
+    parser.add_argument("--show-only", action="store_true", help="write the result to stdin")
     parser.add_argument("--isort", action="store_true", help="apply isort")
 
     args = parser.parse_args(argv)
@@ -166,7 +166,7 @@ def main(argv=None, print_source=True):
                 line_length=120,
             ).output
 
-        if args.rewrite:
+        if not args.show_only:
             mod.write_text(new_source)
         elif print_source:
             print(new_source)
