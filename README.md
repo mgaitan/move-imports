@@ -65,11 +65,6 @@ or the development version, directly from the git repo
 $ pip --user install git+https://github.com/mgaitan/move-imports
 ```
 
-If you want apply `--isort` for postprocessing, install it
-
-```
-$ pip --user install isort
-```
 
 ## Skip cases
 
@@ -128,7 +123,7 @@ $ pytest
 ```
 $ move-imports --help
 usage: move-imports [-h] [--start-from-last] [--limit-to LIMIT_TO] [--debug]
-                    [--rewrite] [--isort]
+                    [--show-only] [--safe] [--isort]
                     [paths [paths ...]]
 
 positional arguments:
@@ -140,8 +135,9 @@ optional arguments:
   --limit-to LIMIT_TO  Stop processing after N files. Use with --start-from-
                        last
   --debug              Make verbose output
-  --rewrite            write the result to source's path
-  --isort              apply isort
+  --show-only          write the result to stdin
+  --safe               Only move stdlib or thirdparty imports
+  --isort              Apply isort
 ```
 
 ## Acknowledgement

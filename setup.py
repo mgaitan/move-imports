@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="move-imports",
-    version="0.3",
+    version="0.4",
     description="""Refactor modules to move import statements to the header""",
     long_description=open("README.md").read(),
     long_description_content_type='text/markdown',
@@ -12,7 +12,7 @@ setup(
     py_modules=["move_imports"],
     include_package_data=True,
     install_requires=["isort"],
-    tests_require=["pytest"],
+    tests_require=["pytest>=5.0.0"],
     license="MIT",
     zip_safe=False,
     keywords="ast, refactor",
