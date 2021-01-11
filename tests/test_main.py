@@ -11,6 +11,9 @@ root = Path(__file__).parent
     ([f"{root}/example.py", "--isort"], f"{root}/example_result_with_isort.py"),
     ([f"{root}/example2.py"], f"{root}/example2_result.py"),
     ([f"{root}/example3.py", "--isort"], f"{root}/example3_result.py"),
+
+    ([f"{root}/example3.py", "--isort"], f"{root}/example3_result.py"),
+    ([f"{root}/example5_safe.py", "--isort"], f"{root}/example5_safe_result.py"),
 ])
 def test_main(args, result_path):
     result = main(args + ["--show-only"], print_source=False)

@@ -7,12 +7,27 @@ from itertools import chain, dropwhile
 from pathlib import Path
 from textwrap import dedent
 
+from isort.api import sort_code_string
+from isort.place import module as _checker
+
+
 logging.basicConfig(stream=sys.stderr, format="%(levelname)s - %(message)s")
 
 SKIP_MARK_PATTERN = re.compile(r"#\s+?(noqa|avoid circular import)")
+IMPORT_SOURCE_PATTERN = re.compile(r"^(from|import)\s*([\.\w]+)")
 
 
-def is_import(node, top=None):
+def is_safe(node, source):
+    """check if an import node is safe to be moved, ie it's stdlib or thirdparty"""
+    import ipdb; ipdb.set_trace()
+    if not isinstance(node, (ast.Import, ast.ImportFrom)):
+        return False
+
+    imported_from = re.match(IMPORT_SOURCE_PATTERN, source).group(2)
+    return _checker(imported_from) in ("STDLIB", "THIRDPARTY")
+
+
+def is_import(node, top=None, safe=False):
     """
     check if node is an import statement.
     if top is given (as boolean), filter by top level not stop level
@@ -24,7 +39,9 @@ def is_import(node, top=None):
     return result
 
 
-def refactor(mod: Path) -> str:
+
+
+def refactor(mod: Path, safe: bool=False) -> str:
     """
     given a path to a module, traverse the code and move all non-top
     import statements to the header.
@@ -50,7 +67,7 @@ def refactor(mod: Path) -> str:
         return start
 
     def get_source_segment(node):
-        """given a node, return it's  line number range (0-indexed)"""
+        """given a node, return its line number range (0-indexed)"""
         if node:
             try:
                 next_node = list_of_nodes[list_of_nodes.index(node) + 1]
@@ -62,6 +79,9 @@ def refactor(mod: Path) -> str:
         # block not found
         return (0, 0)
 
+    def get_code_block(segment):
+        return dedent("\n".join(source_lines[segment[0] : segment[1] + 1]))
+
     def find_head_block():
         """
         find the line number ranges of all imports statements
@@ -70,11 +90,12 @@ def refactor(mod: Path) -> str:
         first_import = None
         last_import = None
         for node in list_of_nodes:
-            if last_import and not is_import(node, True):
+            is_top_import = is_import(node, True)
+            if last_import and not is_top_import:
                 break
-            elif not first_import and is_import(node, True):
+            elif not first_import and is_top_import:
                 first_import = node
-            elif is_import(node, True):
+            elif is_top_import:
                 last_import = node
 
         start, _ = get_source_segment(first_import)
@@ -86,7 +107,8 @@ def refactor(mod: Path) -> str:
 
     to_move = []
     for node in list_of_nodes:
-        if is_import(node, top=False) and not has_skip_mark(node):
+
+        if is_import(node, top=False) and not has_skip_mark(node) and (not safe or is_safe(node, source=get_code_block(get_source_segment(node)))):
             to_move.append(get_source_segment(node))
 
     if to_move:
@@ -97,7 +119,7 @@ def refactor(mod: Path) -> str:
     # get new imports to put at head_end
     imports = []
     for segment in to_move:
-        block = dedent("\n".join(source_lines[segment[0] : segment[1] + 1]))
+        block = get_code_block(segment)
         imports.append(block)
 
     imports_to_append = "\n".join(imports)
@@ -126,7 +148,8 @@ def main(argv=None, print_source=True):
     )
     parser.add_argument("--debug", action="store_true", help="Make verbose output")
     parser.add_argument("--show-only", action="store_true", help="write the result to stdin")
-    parser.add_argument("--isort", action="store_true", help="apply isort")
+    parser.add_argument("--safe", action="store_true", help="Only move stdlib or thirdparty imports")
+    parser.add_argument("--isort", action="store_true", help="Apply isort")
 
     args = parser.parse_args(argv)
     logging.root.setLevel(logging.DEBUG if args.debug else logging.INFO)
@@ -150,21 +173,21 @@ def main(argv=None, print_source=True):
             break
         last_processed = mod
         logging.info(f"processing {mod}")
-        new_source, new_head_end = refactor(mod)
+        new_source, new_head_end = refactor(mod, safe=args.safe)
         if args.isort:
-            from isort import SortImports
-
+            import ipdb; ipdb.set_trace()
             logging.debug("applying isort")
             # apply isort in black compatible mode
-            new_source = SortImports(
-                file_contents=new_source,
+            new_source = sort_code_string(
+                code=new_source,
+                file_path=mod,
                 combine_as_imports=True,
                 multi_line_output=3,
                 include_trailing_comma=True,
                 force_grid_wrap=0,
                 use_parentheses=True,
                 line_length=120,
-            ).output
+            )
 
         if not args.show_only:
             mod.write_text(new_source)
