@@ -10,7 +10,7 @@ def foo():
 
 
 def bar():
-    from math import cos    # noqa
+    from math import cos  # noqa
     return cos(1)
 
 

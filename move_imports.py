@@ -19,7 +19,6 @@ IMPORT_SOURCE_PATTERN = re.compile(r"^(from|import)\s*([\.\w]+)")
 
 def is_safe(node, source):
     """check if an import node is safe to be moved, ie it's stdlib or thirdparty"""
-    import ipdb; ipdb.set_trace()
     if not isinstance(node, (ast.Import, ast.ImportFrom)):
         return False
 
@@ -175,7 +174,6 @@ def main(argv=None, print_source=True):
         logging.info(f"processing {mod}")
         new_source, new_head_end = refactor(mod, safe=args.safe)
         if args.isort:
-            import ipdb; ipdb.set_trace()
             logging.debug("applying isort")
             # apply isort in black compatible mode
             new_source = sort_code_string(
